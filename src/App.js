@@ -10,28 +10,31 @@ import {
 } from "react-router-dom";
 import { useRecoilState, atom } from "recoil";
 
+import { produce } from "immer";
+
 const todosAtom = atom({
   key: "app/todosAtom",
   default: [
-    { id: 3, regDate: "2023-12-12 12:12:12", content: "음악감상" },
-    { id: 2, regDate: "2023-12-12 12:12:12", content: "공부" },
-    { id: 1, regDate: "2023-12-12 12:12:12", content: "운동" },
-  ],
+    { id: 3, regDate: "2020-12-12 12:12:12", content: "명상" },
+    { id: 2, regDate: "2020-12-12 12:12:11", content: "공부" },
+    { id: 1, regDate: "2020-12-12 12:12:10", content: "운동" }
+  ]
 });
 
-function useTodosState() {
+function useTodosStatus() {
   const [todos, setTodos] = useRecoilState(todosAtom);
-  const lastTodoIdRef = useRef(todos[0].id);
+  const lastTodoIdRef = useRef(todos.length == 0 ? 0 : todos[0].id);
 
   const addTodo = (content) => {
     const id = ++lastTodoIdRef.current;
-    const regDate = "2023-12-12 12:12:12";
+    const regDate = "2022-12-12 12:12:12";
 
     const newTodo = {
       id,
       regDate,
-      content,
+      content
     };
+
     const newTodos = [newTodo, ...todos];
     setTodos(newTodos);
   };
@@ -46,7 +49,7 @@ function useTodosState() {
     return todos[index];
   };
 
-  const removeTodyById = (id) => {
+  const removeTodoById = (id) => {
     const index = findIndexById(id);
 
     if (index == -1) return;
@@ -55,41 +58,36 @@ function useTodosState() {
     setTodos(newTodos);
   };
 
-  const modifyTodyById = (id, content) => {
+  const modifyTodoById = (id, content) => {
     const index = findIndexById(id);
 
     if (index == -1) return;
 
-    const newTodos = todos.map((todo, _index) =>
-      index == _index ? { ...todo, content } : todo
-    );
+    const newTodos = produce(todos, (draft) => {
+      draft[index].content = content;
+    });
     setTodos(newTodos);
   };
-
   return {
     todos,
     addTodo,
-    removeTodyById,
-    modifyTodyById,
-    findTodoById,
+    removeTodoById,
+    modifyTodoById,
+    findTodoById
   };
 }
 
 function TodoListItem({ todo }) {
-  const [editMode, setEditMode] = useState(false);
-  const todosState = useTodosState();
+  const todosStatus = useTodosStatus();
 
   return (
     <li>
-      {todo.id} : {todo.content}
-      <NavLink to={`/edit/${todo.id}`} className="btn btn-sm">
-        수정
-      </NavLink>
+      {todo.id} :{todo.content}
+      <NavLink to={`/edit/${todo.id}`}>수정</NavLink>
       <button
-        className="btn btn-sm"
         onClick={() =>
-          window.confirm(`${todo.id}번 할 일을 삭제하시겠습니까?`) &&
-          todosState.removeTodyById(todo.id)
+          window.confirm(`${todo.id}번 할일을 삭제하시겠습니까?`) &&
+          todosStatus.removeTodoById(todo.id)
         }
       >
         삭제
@@ -99,13 +97,14 @@ function TodoListItem({ todo }) {
 }
 
 function TodoListPage() {
-  const todosState = useTodosState();
+  const todosStatus = useTodosStatus();
 
   return (
     <>
-      <h1>할 일 리스트</h1>
+      <h1>할일리스트</h1>
+
       <ul>
-        {todosState.todos.map((todo) => (
+        {todosStatus.todos.map((todo) => (
           <TodoListItem key={todo.id} todo={todo} />
         ))}
       </ul>
@@ -114,7 +113,7 @@ function TodoListPage() {
 }
 
 function TodoWritePage() {
-  const todosState = useTodosState();
+  const todosStatus = useTodosStatus();
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -124,13 +123,13 @@ function TodoWritePage() {
     form.content.value = form.content.value.trim();
 
     if (form.content.value.length == 0) {
-      alert("할 일을 입력해주세요.");
+      alert("할일을 입력해주세요.");
       form.content.focus();
 
       return;
     }
 
-    todosState.addTodo(form.content.value);
+    todosStatus.addTodo(form.content.value);
 
     form.content.value = "";
     form.content.focus();
@@ -138,26 +137,20 @@ function TodoWritePage() {
 
   return (
     <>
-      <h1>할 일 작성</h1>
-      <form onSubmit={onSubmit} className="mt-2">
-        <input
-          type="text"
-          name="content"
-          placeholder="할 일을 작성해주세요."
-          className="input input-bordered w-full max-w-xs"
-        />
-        <input type="submit" value="작성" className="btn ml-2" />
+      <h1>할일작성</h1>
+      <form onSubmit={onSubmit}>
+        <input name="content" type="text" placeholder="할일을 입력해주세요." />
+        <input type="submit" value="작성" />
       </form>
-      <div>{todosState.todos.length}</div>
     </>
   );
 }
 
 function TodoEditPage() {
   const navigate = useNavigate();
-  const todosState = useTodosState();
   const { id } = useParams();
-  const todo = todosState.findTodoById(id);
+  const todosStatus = useTodosStatus();
+  const todo = todosStatus.findTodoById(id);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -167,30 +160,29 @@ function TodoEditPage() {
     form.content.value = form.content.value.trim();
 
     if (form.content.value.length == 0) {
-      alert("할 일을 입력해주세요.");
+      alert("할일을 입력해주세요.");
       form.content.focus();
 
       return;
     }
 
-    todosState.modifyTodyById(todo.id, form.content.value);
+    todosStatus.modifyTodoById(todo.id, form.content.value);
 
-    navigate("/list", { replace: true });
+    navigate("/list", { repalce: true });
   };
 
   return (
     <>
-      <h1>할 일 수정</h1>
+      <h1>할일수정</h1>
       <form onSubmit={onSubmit}>
         <input
           name="content"
           type="text"
-          placeholder="할 일을 입력해주세요."
           defaultValue={todo.content}
-          className="input input-bordered"
+          placeholder="할일을 입력해주세요."
         />
-        <button className="btn btn-sm">수정</button>
-        <button className="btn btn-sm" onClick={() => navigate("/list")}>
+        <input type="submit" value="수정" />
+        <button type="button" onClick={() => navigate("/list")}>
           취소
         </button>
       </form>
@@ -224,7 +216,7 @@ export default function App() {
         <Route path="/list" element={<TodoListPage />} />
         <Route path="/write" element={<TodoWritePage />} />
         <Route path="/edit/:id" element={<TodoEditPage />} />
-        <Route path="/*" element={<Navigate to="write" />} />
+        <Route path="*" element={<Navigate to="/list" />} />
       </Routes>
     </>
   );
