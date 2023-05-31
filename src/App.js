@@ -35,7 +35,12 @@ function useTodosStatus() {
       content
     };
 
-    const newTodos = [newTodo, ...todos];
+    //const newTodos = [newTodo, ...todos];
+
+    const newTodos = produce(todos, (draft) => {
+      draft.unshift(newTodo)
+    })
+
     setTodos(newTodos);
   };
 
@@ -49,14 +54,22 @@ function useTodosStatus() {
     return todos[index];
   };
 
+
+
+
   const removeTodoById = (id) => {
     const index = findIndexById(id);
 
     if (index == -1) return;
 
-    const newTodos = todos.filter((_, _index) => index != _index);
+    // const newTodos = todos.filter((_, _index) => index != _index);
+
+    const newTodos = produce(todos, (draft) => {
+        draft.splice(index,1)
+       });
     setTodos(newTodos);
   };
+
 
   const modifyTodoById = (id, content) => {
     const index = findIndexById(id);
